@@ -7,4 +7,36 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Dafny: verify *.dfy files and translate them to C# as part of the build. -->
+  <PropertyGroup>
+    <DafnyExe Condition="'$(DafnyExe)' == ''">dafny</DafnyExe>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Must match the version of the dafny tool doing the translation. -->
+    <PackageReference Include="DafnyRuntime" Version="4.11.0" />
+    <DafnySource Include="**\*.dfy" Exclude="$(BaseOutputPath)**;$(BaseIntermediateOutputPath)**" />
+  </ItemGroup>
+
+  <!-- IntermediateOutputPath (obj\...) is only defined once the SDK targets load, so compute the path here. -->
+  <Target Name="SetDafnyPaths">
+    <PropertyGroup>
+      <DafnyGeneratedFile>$(IntermediateOutputPath)Dafny\Dafny.g.cs</DafnyGeneratedFile>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="TranslateDafny"
+          BeforeTargets="CoreCompile"
+          DependsOnTargets="SetDafnyPaths"
+          Condition="'@(DafnySource)' != ''"
+          Inputs="@(DafnySource);$(MSBuildProjectFullPath)"
+          Outputs="$(DafnyGeneratedFile)">
+    <!-- translate verifies first, so a failing proof fails the build. -->
+    <Exec Command="&quot;$(DafnyExe)&quot; translate cs @(DafnySource->'&quot;%(FullPath)&quot;', ' ') --output &quot;$(DafnyGeneratedFile)&quot;" />
+    <ItemGroup>
+      <Compile Include="$(DafnyGeneratedFile)" />
+      <FileWrites Include="$(DafnyGeneratedFile)" />
+    </ItemGroup>
+  </Target>
+
 </Project>
