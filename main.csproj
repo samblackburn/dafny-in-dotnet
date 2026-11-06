@@ -15,13 +15,13 @@
   <ItemGroup>
     <!-- Must match the version of the dafny tool doing the translation. -->
     <PackageReference Include="DafnyRuntime" Version="4.11.0" />
-    <DafnySource Include="**\*.dfy" Exclude="$(BaseOutputPath)**;$(BaseIntermediateOutputPath)**" />
+    <DafnySource Include="**/*.dfy" Exclude="$(BaseOutputPath)**;$(BaseIntermediateOutputPath)**" />
   </ItemGroup>
 
   <!-- IntermediateOutputPath (obj\...) is only defined once the SDK targets load, so compute the path here. -->
   <Target Name="SetDafnyPaths">
     <PropertyGroup>
-      <DafnyGeneratedFile>$(IntermediateOutputPath)Dafny\Dafny.g.cs</DafnyGeneratedFile>
+      <DafnyGeneratedFile>$(IntermediateOutputPath)Dafny/Dafny.g.cs</DafnyGeneratedFile>
     </PropertyGroup>
   </Target>
 

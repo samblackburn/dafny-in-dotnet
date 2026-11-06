@@ -1,0 +1,54 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Build-time dependencies. The build verifies the Dafny proofs and translates
+# *.dfy to C#, so it needs the Dafny CLI and the Z3 solver Dafny uses.
+env:
+  DOTNET_VERSION: 10.0.x
+  DAFNY_VERSION: 4.11.0 # must match the DafnyRuntime PackageReference in main.csproj
+  Z3_VERSION: 4.12.1    # the Z3 version Dafny 4.11 expects
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Check Dafny tool and runtime versions match
+        run: |
+          grep -q "Include=\"DafnyRuntime\" Version=\"$DAFNY_VERSION\"" main.csproj \
+            || { echo "::error::DafnyRuntime in main.csproj doesn't match DAFNY_VERSION ($DAFNY_VERSION)"; exit 1; }
+
+      - name: Install Dafny
+        run: dotnet tool install --global dafny --version "$DAFNY_VERSION"
+
+      - name: Install Z3
+        run: |
+          curl -sSL -o z3.zip "https://github.com/Z3Prover/z3/releases/download/z3-$Z3_VERSION/z3-$Z3_VERSION-x64-glibc-2.35.zip"
+          unzip -q z3.zip -d "$RUNNER_TOOL_CACHE/z3"
+          Z3_BIN="$RUNNER_TOOL_CACHE/z3/z3-$Z3_VERSION-x64-glibc-2.35/bin"
+          chmod +x "$Z3_BIN/z3"
+          echo "$Z3_BIN" >> "$GITHUB_PATH"
+
+      - name: Show tool versions
+        run: |
+          dotnet --version
+          dafny --version
+          z3 --version
+
+      - name: Build (verifies Dafny proofs, then compiles)
+        run: dotnet build --configuration Release
+
+      - name: Run
+        run: |
+          output=$(dotnet run --configuration Release --no-build)
+          echo "$output"
+          test "$output" = "Hello, World!"
